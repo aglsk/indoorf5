@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Indoor Display</title>
+  <style>
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+    html, body {
+      width: 100vw; height: 100vh;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      font-family: Arial, sans-serif;
+    }
+    #container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      transition: opacity 1s ease;
+      opacity: 1;
+    }
+    img, video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    p {
+      color: white;
+      font-size: 4vw;
+      text-align: center;
+      padding: 2rem;
+    }
+    #weather, #clock {
+      position: absolute;
+      top: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: 1.5vw;
+      padding: 10px 15px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+      z-index: 10;
+    }
+    #weather { right: 10px; }
+    #clock { left: 10px; }
+	
+	.espe-bg {
+      background: url('fundo.jpg') no-repeat center center;
+      background-size: cover;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">Carregando...</div>
+  <div id="clock">00:00</div>
+  <div id="weather">Clima: --</div>
+
+<script>
+  const SHEET_URL = 'https://script.google.com/macros/s/AKfycbynACXl5Bl8MMGOVKKIF9n8z6IGEBkt0rFj46kn7UdQyox2AET4aL-8NvbtrRc1zJ6mdA/exec';
+
+  async function loadContent() {
+    try {
+      const res = await fetch(SHEET_URL);
+      const items = await res.json();
+      if (items.length === 0) {
+        document.getElementById("container").innerText = "Sem conteúdo.";
+      } else {
+        playLoop(items);
+      }
+    } catch (e) {
+      document.getElementById("container").innerText = "Erro ao carregar conteúdo.";
+      console.error(e);
+    }
+  }
+
+  function fadeOut(element) {
+    return new Promise(resolve => {
+      element.style.opacity = '0';
+      setTimeout(resolve, 1000); // duração do fade out
+    });
+  }
+
+  function fadeIn(element) {
+    return new Promise(resolve => {
+      element.style.opacity = '1';
+      setTimeout(resolve, 1000); // duração do fade in
+    });
+  }
+
+  async function playLoop(items, index = 0) {
+    const container = document.getElementById("container");
+    const item = items[index];
+
+    await fadeOut(container);
+
+    container.innerHTML = ""; // limpa antes de carregar o próximo
+
+    if (item.tipo === "imagem") {
+      const img = document.createElement("img");
+      img.src = item.conteudo;
+      container.appendChild(img);
+      await fadeIn(container);
+      setTimeout(() => playLoop(items, (index + 1) % items.length), item.duracao * 1000);
+
+    } else if (item.tipo === "texto") {
+      const p = document.createElement("p");
+      p.textContent = item.conteudo;
+      container.appendChild(p);
+      await fadeIn(container);
+      setTimeout(() => playLoop(items, (index + 1) % items.length), item.duracao * 1000);
+
+    } else if (item.tipo === "video") {
+      const video = document.createElement("video");
+      video.src = item.conteudo;
+      video.autoplay = true;
+      video.muted = true;
+      video.controls = false;
+      video.playsInline = true;
+      container.appendChild(video);
+      await fadeIn(container);
+
+      video.onended = () => playLoop(items, (index + 1) % items.length);
+
+    } else if (item.tipo === "espe") {
+  let specs = {};
+  try {
+    specs = JSON.parse(item.conteudo);
+  } catch (e) {
+    specs = {};
+  }
+
+  const espeWrapper = document.createElement("div");
+  espeWrapper.className = "espe-bg";
+
+  const box = document.createElement("div");
+  box.style.background = "rgba(0, 0, 0, 0.75)";
+  box.style.color = "#fff";
+  box.style.padding = "2vw";
+  box.style.borderRadius = "20px";
+  box.style.fontSize = "1.8vw";
+  box.style.lineHeight = "1.6";
+  box.style.textAlign = "left";
+  box.style.maxWidth = "90%";
+  box.style.margin = "auto";
+
+  box.innerHTML = `
+    <strong style="color:#00d8ff">🖥️ Especificações do Dispositivo:</strong><br><br>
+    <strong>Notebooks:</strong> ${specs.notebooks || "Desconhecido"}<br>
+    <strong>Sistema Operacional:</strong> ${specs.so || "Desconhecido"}<br>
+    <strong>RAM:</strong> ${specs.ram_gb ? specs.ram_gb + " GB" : "Desconhecida"}<br>
+    <strong>Armazenamento:</strong> ${specs.disco_gb ? specs.disco_gb + " GB" : "Desconhecido"}<br><br>
+    <strong style="color:orange">📝 3 Mêses de Garantia</strong><br>
+    <strong style="color:lightgreen">💼 Office Completo Ativado</strong><br>
+    <strong style="color:orange">🛡️ Antivírus Microsoft Defender</strong><br>
+    <strong style="color:lightgreen">👨🏻‍💼 1 Ano de Assistencia Tecnica</strong><br>
+    <strong style="color:orange">💻 Suporte Remoto Via AnyDesk</strong>
+  `;
+
+  espeWrapper.appendChild(box);
+  container.appendChild(espeWrapper);
+
+  await fadeIn(container);
+
+  setTimeout(() => playLoop(items, (index + 1) % items.length), (item.duracao || 10) * 1000);
+}
+
+  }
+
+  async function loadWeather() {
+    try {
+      const latitude = -22.7868;
+      const longitude = -43.3131;
+
+      const weatherURL = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode&timezone=auto`;
+      const res = await fetch(weatherURL);
+      const data = await res.json();
+
+      const temp = data.current.temperature_2m;
+      const code = data.current.weathercode;
+
+      const iconMap = {
+        0: "☀️", 1: "🌤️", 2: "🌥️", 3: "☁️", 45: "🌫️", 48: "🌫️",
+        51: "🌦️", 61: "🌧️", 71: "🌨️", 95: "⛈️"
+      };
+
+      const emoji = iconMap[code] || "🌡️";
+
+      document.getElementById("weather").innerHTML = `${emoji} ${temp}°C`;
+    } catch (e) {
+      document.getElementById("weather").innerText = "Erro clima";
+      console.error(e);
+    }
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const data = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+    document.getElementById("clock").innerHTML = `${data} | ${hora}`;
+  }
+
+  loadContent();
+  loadWeather();
+  setInterval(loadWeather, 600000);
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

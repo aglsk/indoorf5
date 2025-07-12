@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center px-4 py-8">
+
+  <!-- Login -->
+  <div id="login" class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md border border-gray-200">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Painel Admin</h2>
+    <label class="block text-gray-600 text-sm mb-1">Senha</label>
+    <input type="password" id="senha" placeholder="Digite sua senha" class="w-full border border-gray-300 p-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <button onclick="entrar()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition">Entrar</button>
+  </div>
+
+  <!-- Painel -->
+  <div id="painel" class="hidden w-full max-w-5xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-3xl font-bold text-gray-800">Painel Indoor</h2>
+      <a href="https://docs.google.com/spreadsheets/d/1sOwl6l6_mJmgGzRA5-0lrQ-eJeQOHniwDMxYvgM-5nc/edit?gid=0#gid=0" target="_blank" class="text-blue-600 hover:underline">Ver Planilha</a>
+    </div>
+
+    <!-- Adicionar -->
+    <div class="mb-8">
+      <h3 class="text-2xl font-semibold text-gray-700 mb-4">Adicionar Conteúdo</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <select id="tipo" class="border border-gray-300 p-3 rounded-lg">
+          <option value="imagem">Imagem</option>
+          <option value="video">Vídeo</option>
+          <option value="texto">Texto</option>
+          <option value="espe">Especificação</option>
+        </select>
+        <input type="number" id="duracao" placeholder="Duração (s)" class="border border-gray-300 p-3 rounded-lg">
+        <input type="text" id="conteudo" placeholder="Conteúdo (URL, texto, JSON...)" class="border border-gray-300 p-3 rounded-lg">
+      </div>
+      <button onclick="adicionar()" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition">Adicionar</button>
+    </div>
+
+    <!-- Filtro -->
+    <div class="mb-8">
+      <h3 class="text-2xl font-semibold text-gray-700 mb-4">Filtrar por Tipo</h3>
+      <select id="filtroTipo" onchange="carregarLista()" class="border border-gray-300 p-3 rounded-lg w-full md:w-64">
+        <option value="">Todos</option>
+        <option value="imagem">Imagem</option>
+        <option value="video">Vídeo</option>
+        <option value="texto">Texto</option>
+        <option value="espe">Especificação</option>
+      </select>
+    </div>
+
+    <!-- Lista -->
+    <div>
+      <h3 class="text-2xl font-semibold text-gray-700 mb-4">Conteúdo Atual</h3>
+      <ul id="lista" class="space-y-4"></ul>
+    </div>
+  </div>
+
+  <!-- Modal Edição -->
+  <div id="modalEditar" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
+    <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg border border-gray-300">
+      <h2 class="text-2xl font-bold mb-4">Editar Conteúdo</h2>
+      <select id="editTipo" class="border border-gray-300 p-3 rounded-lg w-full mb-3">
+        <option value="imagem">Imagem</option>
+        <option value="video">Vídeo</option>
+        <option value="texto">Texto</option>
+        <option value="espe">Especificação</option>
+      </select>
+      <input type="number" id="editDuracao" placeholder="Duração" class="border border-gray-300 p-3 rounded-lg w-full mb-3">
+      <input type="text" id="editConteudo" placeholder="Conteúdo" class="border border-gray-300 p-3 rounded-lg w-full mb-4">
+      <div class="flex justify-end gap-3">
+        <button onclick="fecharModal()" class="bg-gray-300 px-5 py-2 rounded-lg hover:bg-gray-400">Cancelar</button>
+        <button onclick="salvarEdicao()" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const URL = "https://script.google.com/macros/s/AKfycbynACXl5Bl8MMGOVKKIF9n8z6IGEBkt0rFj46kn7UdQyox2AET4aL-8NvbtrRc1zJ6mdA/exec";
+    let dados = [];
+    let indexEdicao = null;
+
+    function entrar() {
+      if (document.getElementById("senha").value === "123412341234") {
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("painel").classList.remove("hidden");
+        carregarLista();
+      } else {
+        alert("Senha incorreta");
+      }
+    }
+
+    async function adicionar() {
+      const tipo = document.getElementById("tipo").value;
+      const conteudo = document.getElementById("conteudo").value;
+      const duracao = document.getElementById("duracao").value || "10";
+
+      const params = new URLSearchParams({ tipo, conteudo, duracao });
+      await fetch(URL + "?" + params.toString());
+      document.getElementById("conteudo").value = "";
+      alert("Adicionado com sucesso");
+      carregarLista();
+    }
+
+    async function carregarLista() {
+      const filtro = document.getElementById("filtroTipo").value;
+      const res = await fetch(URL);
+      dados = await res.json();
+      const lista = document.getElementById("lista");
+      lista.innerHTML = "";
+
+      dados.forEach((item, i) => {
+        if (filtro && item.tipo !== filtro) return;
+
+        const li = document.createElement("li");
+        li.className = "bg-gray-100 p-4 rounded-lg shadow flex justify-between items-start gap-4";
+
+        li.innerHTML = `
+          <div>
+            <p class="text-sm text-gray-500">Tipo: <span class="font-semibold">${item.tipo}</span></p>
+            <p class="text-gray-700 truncate max-w-[400px]">${item.conteudo}</p>
+            <p class="text-sm text-gray-500">Duração: ${item.duracao}s</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="editar(${i})" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">Editar</button>
+            <button onclick="excluir(${i})" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">Excluir</button>
+          </div>
+        `;
+        lista.appendChild(li);
+      });
+    }
+
+    async function excluir(index) {
+      if (!confirm("Deseja excluir este item?")) return;
+      await fetch(URL + "?delete=" + index);
+      carregarLista();
+    }
+
+    function editar(index) {
+      indexEdicao = index;
+      const item = dados[index];
+      document.getElementById("editTipo").value = item.tipo;
+      document.getElementById("editConteudo").value = item.conteudo;
+      document.getElementById("editDuracao").value = item.duracao;
+      document.getElementById("modalEditar").classList.remove("hidden");
+      document.getElementById("modalEditar").classList.add("flex");
+    }
+
+    function fecharModal() {
+      document.getElementById("modalEditar").classList.add("hidden");
+      document.getElementById("modalEditar").classList.remove("flex");
+      indexEdicao = null;
+    }
+
+    async function salvarEdicao() {
+      const novo = {
+        tipo: document.getElementById("editTipo").value,
+        conteudo: document.getElementById("editConteudo").value,
+        duracao: document.getElementById("editDuracao").value
+      };
+      await fetch(URL + "?delete=" + indexEdicao);
+      await fetch(URL + "?" + new URLSearchParams(novo).toString());
+      fecharModal();
+      carregarLista();
+    }
+  </script>
+</body>
+</html>
